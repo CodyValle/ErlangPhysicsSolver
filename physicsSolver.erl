@@ -1,12 +1,8 @@
 -module(physicsSolver).
 
 -export([solve/1]).
+-export([circular/1]).
 
--export([circ_speed/2]).
--export([circ_acc/3]).
--export([circ_force/2]).
--export([circ_force/4]).
--export([work/4]).
 -export([force_grav/3]).
 -export([force_grav/1]).
 
@@ -52,27 +48,28 @@ dtv1(D,T,V) -> [{acceleration, 2 * (D - V * T) / T / T}, {velocityf, 2 * D * T -
 dv2v1(D,V1,V2) -> [{acceleration, (V2 * V2 - V1 * V1) / 2 / D},{time, (2 * D) / (V2 + V1)}].
 tv2v1(T,V1,V2) -> [{acceleration, (V2 - V1) / T}, {distance, (V2 + V1) * T / 2}].
 
+% Circular function entry point
+circular(L) -> filter_circular(lists:keysort(1, L)).
 
-%Circular Motion Functions
-%returns the average speed of an object in circular motion
-circ_speed(R,T) -> (2*math:pi()*R) / T.
+% Circular filter
+filter_circular([{acceleration, A},{mass, M}|_]) -> am(A,M);
+filter_circular([{force, F},{mass, M}|_]) -> fm(F,M);
+filter_circular([{mass, M},{radius, R},{velocity, V}|_]) -> mrv(M,R,V);
+filter_circular([{mass, M},{radius, R},{time, T}|_]) -> mrt(M,R,T);
+filter_circular([{radius, R},{time, T}|_]) -> rt(R,T);
+filter_circular([{radius, R},{velocity, V}|_]) -> rv(R,V);
+filter_circular([{acceleration, _},{force, _}|_]) -> io:fwrite("Don't know what to do with this junk.").
 
-%returns the average acceleration of an object in circular motion
-circ_acc(V,R,speed) -> (V * V) / R;
-circ_acc(R,T,time) -> (4 * (math:pi() * math:pi()) * R) / (T * T);
-circ_acc(F,M,force) -> (F / M).
+% Circular calculations
+am(A,M) -> [{force, M * A}].
+fm(F,M) -> [{acceleration, (F / M)}].
+mrv(M,R,V) -> [{force, M * (V * V) / R}].
+mrt(M,R,T) -> [{force, M * (4 * (math:pi() * math:pi()) * R) / (T * T)}].
+rt(R,T) -> [{velocity, (2*math:pi()*R) / T}, {acceleration, (4 * (math:pi() * math:pi()) * R) / (T * T)}].
+rv(R,V) -> [{acceleration, (V * V) / R}].
 
-%returns the net force acting on an object moving in circular motion
-circ_force(M,A) -> M * A.
-circ_force(M,V,R,speed) -> M * (V * V) / R;
-circ_force(M,R,T,time) -> M * (4 * (math:pi() * math:pi()) * R) / (T * T).
 
-%Centripetal Force Functions
-%returns the work done to an object
-work(F,D,T,radians) -> F * D * math:cos(T);
-work(F,D,T,degrees) -> F * D * math:cos(T * math:pi() / 180).
-
-%returns the force of gravity
+% Returns the force of gravity
 force_grav(M1,M2,D) -> (6.673e-11 * M1 * M2) / (D * D).
 force_grav(M) -> M * 9.8.
 
@@ -107,4 +104,6 @@ convert(D, deci) -> convert(D / 10, meter);
 convert(D, centi) -> convert(D / 10, deci);
 convert(D, milli) -> convert(D / 10, centi);
 convert(D, micro) -> convert(D / 1000, milli);
-convert(D, nano) -> convert(D / 1000, micro).
+convert(D, nano) -> convert(D / 1000, micro);
+
+convert(A, degrees) -> {radians, math:cos(A * math:pi() / 180)}.
